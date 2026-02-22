@@ -36,6 +36,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(response.status, `API error: ${response.statusText}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -153,6 +157,34 @@ export function getGraphData(
   return apiFetch<GraphData>(`/api/v1/graph/${encodeURIComponent(entityId)}?${params}`);
 }
 
+// --- Baseline ---
+
+export interface BaselineMetrics {
+  company_name: string;
+  company_cnpj: string;
+  company_id: string;
+  contract_count: number;
+  total_value: number;
+  peer_count: number;
+  peer_avg_contracts: number;
+  peer_avg_value: number;
+  contract_ratio: number;
+  value_ratio: number;
+  comparison_dimension: string;
+  comparison_key: string;
+  sources: { database: string; retrieved_at: string; url: string }[];
+}
+
+export interface BaselineResponse {
+  entity_id: string;
+  comparisons: BaselineMetrics[];
+  total: number;
+}
+
+export function getBaseline(entityId: string): Promise<BaselineResponse> {
+  return apiFetch<BaselineResponse>(`/api/v1/baseline/${encodeURIComponent(entityId)}`);
+}
+
 // --- Investigations ---
 
 export interface Investigation {
@@ -201,7 +233,7 @@ export function createInvestigation(
   title: string,
   description?: string,
 ): Promise<Investigation> {
-  return apiFetch<Investigation>("/api/v1/investigations", {
+  return apiFetch<Investigation>("/api/v1/investigations/", {
     method: "POST",
     body: JSON.stringify({ title, description: description ?? "" }),
   });
@@ -265,6 +297,40 @@ export function createTag(
     `/api/v1/investigations/${encodeURIComponent(investigationId)}/tags`,
     { method: "POST", body: JSON.stringify({ name, color: color ?? "#e07a2f" }) },
   );
+}
+
+export function removeEntityFromInvestigation(
+  investigationId: string,
+  entityId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/entities/${encodeURIComponent(entityId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function deleteAnnotation(
+  investigationId: string,
+  annotationId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/annotations/${encodeURIComponent(annotationId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function deleteTag(
+  investigationId: string,
+  tagId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/investigations/${encodeURIComponent(investigationId)}/tags/${encodeURIComponent(tagId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function getSharedInvestigation(token: string): Promise<Investigation> {
+  return apiFetch<Investigation>(`/api/v1/shared/${encodeURIComponent(token)}`);
 }
 
 export function generateShareLink(

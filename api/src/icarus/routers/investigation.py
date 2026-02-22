@@ -162,6 +162,53 @@ async def list_tags(
     return await svc.list_tags(session, investigation_id)
 
 
+@router.delete(
+    "/api/v1/investigations/{investigation_id}/entities/{entity_id}",
+    status_code=204,
+)
+async def remove_entity(
+    investigation_id: str,
+    entity_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
+) -> None:
+    removed = await svc.remove_entity_from_investigation(
+        session, investigation_id, entity_id, user.id
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="Investigation or entity not found")
+
+
+@router.delete(
+    "/api/v1/investigations/{investigation_id}/annotations/{annotation_id}",
+    status_code=204,
+)
+async def delete_annotation(
+    investigation_id: str,
+    annotation_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
+) -> None:
+    deleted = await svc.delete_annotation(session, investigation_id, annotation_id, user.id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+
+
+@router.delete(
+    "/api/v1/investigations/{investigation_id}/tags/{tag_id}",
+    status_code=204,
+)
+async def delete_tag(
+    investigation_id: str,
+    tag_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
+) -> None:
+    deleted = await svc.delete_tag(session, investigation_id, tag_id, user.id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Tag not found")
+
+
 @router.post(
     "/api/v1/investigations/{investigation_id}/share",
     response_model=dict[str, str],
@@ -192,6 +239,7 @@ async def get_shared_investigation(
 async def export_investigation(
     investigation_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
 ) -> JSONResponse:
     investigation = await svc.get_investigation(session, investigation_id)
     if investigation is None:
@@ -238,7 +286,8 @@ async def export_investigation_pdf(
         investigation, annotations, tags, entities, lang=lang
     )
 
-    filename = f"{investigation.title}.pdf"
+    safe_title = "".join(c for c in investigation.title if c.isalnum() or c in " _-")[:100]
+    filename = f"{safe_title or 'investigation'}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

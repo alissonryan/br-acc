@@ -6,9 +6,11 @@ Requires:
     2. basedosdados: `uv pip install basedosdados`
 
 Usage:
-    python etl/scripts/explore_cnpj_bd.py                  # explore all tables
-    python etl/scripts/explore_cnpj_bd.py --export-state DF # export DF subset to CSV
-    python etl/scripts/explore_cnpj_bd.py --limit 50        # limit sample rows
+    python etl/scripts/explore_cnpj_bd.py                        # explore all tables
+    python etl/scripts/explore_cnpj_bd.py --export-state SP      # export SP subset to CSV
+    python etl/scripts/explore_cnpj_bd.py --full-export           # export all 3 tables (no filter)
+    python etl/scripts/explore_cnpj_bd.py --full-export --limit 500000  # full export with row cap
+    python etl/scripts/explore_cnpj_bd.py --limit 50              # limit sample rows
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 BD_DATASET = "br_me_cnpj"
 TABLES = ["empresas", "socios", "estabelecimentos"]
+# BigQuery has ~1MB query limit; chunk IN clauses to stay under it
+IN_CLAUSE_BATCH_SIZE = 10_000
 
 
 def _query(sql: str, billing_project: str | None = None) -> "pd.DataFrame":
@@ -59,6 +63,31 @@ def _explore_table(table: str, limit: int, billing_project: str | None) -> None:
     print(df.head(3).to_string(index=False))
 
 
+def _query_batched_in(
+    table: str,
+    column: str,
+    values: list[str],
+    billing_project: str | None,
+) -> "pd.DataFrame":
+    """Query a table with IN clause, batching to avoid BQ query size limits."""
+    import pandas as pd
+
+    frames: list[pd.DataFrame] = []
+    total = len(values)
+    for i in range(0, total, IN_CLAUSE_BATCH_SIZE):
+        batch = values[i : i + IN_CLAUSE_BATCH_SIZE]
+        in_str = ",".join(f"'{v}'" for v in batch)
+        sql = (
+            f"SELECT * FROM `basedosdados.{BD_DATASET}.{table}` "
+            f"WHERE {column} IN ({in_str})"
+        )
+        logger.info("Batch %d/%d (%d values)", i // IN_CLAUSE_BATCH_SIZE + 1,
+                     (total + IN_CLAUSE_BATCH_SIZE - 1) // IN_CLAUSE_BATCH_SIZE,
+                     len(batch))
+        frames.append(_query(sql, billing_project))
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
 def _export_state_subset(
     state: str,
     output_dir: str,
@@ -81,25 +110,17 @@ def _export_state_subset(
     df_estab.to_csv(estab_path, index=False)
     logger.info("Exported %d estabelecimentos to %s", len(df_estab), estab_path)
 
-    # Get cnpj_basico values for joining
+    # Get cnpj_basico values for joining (no cap — use all unique basicos)
     if not df_estab.empty and "cnpj_basico" in df_estab.columns:
         basicos = df_estab["cnpj_basico"].unique().tolist()
-        basicos_str = ",".join(f"'{b}'" for b in basicos[:10000])
+        logger.info("Found %d unique cnpj_basicos to join", len(basicos))
 
-        sql_emp = (
-            f"SELECT * FROM `basedosdados.{BD_DATASET}.empresas` "
-            f"WHERE cnpj_basico IN ({basicos_str})"
-        )
-        df_emp = _query(sql_emp, billing_project)
+        df_emp = _query_batched_in("empresas", "cnpj_basico", basicos, billing_project)
         emp_path = out / f"empresas_{state}.csv"
         df_emp.to_csv(emp_path, index=False)
         logger.info("Exported %d empresas to %s", len(df_emp), emp_path)
 
-        sql_soc = (
-            f"SELECT * FROM `basedosdados.{BD_DATASET}.socios` "
-            f"WHERE cnpj_basico IN ({basicos_str})"
-        )
-        df_soc = _query(sql_soc, billing_project)
+        df_soc = _query_batched_in("socios", "cnpj_basico", basicos, billing_project)
         soc_path = out / f"socios_{state}.csv"
         df_soc.to_csv(soc_path, index=False)
         logger.info("Exported %d socios to %s", len(df_soc), soc_path)
@@ -107,14 +128,38 @@ def _export_state_subset(
     logger.info("Export complete for state %s", state)
 
 
+def _export_full(
+    output_dir: str,
+    limit: int | None,
+    billing_project: str | None,
+) -> None:
+    """Export all 3 tables directly — no state filter, no join logic."""
+    from pathlib import Path
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    for table in TABLES:
+        limit_clause = f" LIMIT {limit}" if limit else ""
+        sql = f"SELECT * FROM `basedosdados.{BD_DATASET}.{table}`{limit_clause}"
+        df = _query(sql, billing_project)
+        csv_path = out / f"{table}.csv"
+        df.to_csv(csv_path, index=False)
+        logger.info("Exported %d rows from %s to %s", len(df), table, csv_path)
+
+    logger.info("Full export complete")
+
+
 @click.command()
-@click.option("--limit", type=int, default=100, help="Sample rows per table")
+@click.option("--limit", type=int, default=None, help="Max rows per table (default: no limit)")
 @click.option("--export-state", type=str, default=None, help="Export subset for state (e.g. DF, SP)")
+@click.option("--full-export", is_flag=True, default=False, help="Export all 3 tables directly (no state filter)")
 @click.option("--output-dir", default="./data/cnpj/extracted", help="Output directory for exports")
 @click.option("--billing-project", type=str, default=None, help="GCP billing project ID")
 def main(
-    limit: int,
+    limit: int | None,
     export_state: str | None,
+    full_export: bool,
     output_dir: str,
     billing_project: str | None,
 ) -> None:
@@ -125,11 +170,14 @@ def main(
         logger.error("basedosdados not installed. Run: uv pip install 'basedosdados>=2.0.0'")
         sys.exit(1)
 
-    if export_state:
-        _export_state_subset(export_state, output_dir, limit, billing_project)
+    if full_export:
+        _export_full(output_dir, limit, billing_project)
+    elif export_state:
+        # State mode uses limit for estabelecimentos query (default: 100K)
+        _export_state_subset(export_state, output_dir, limit or 100_000, billing_project)
     else:
         for table in TABLES:
-            _explore_table(table, limit, billing_project)
+            _explore_table(table, limit or 100, billing_project)
 
 
 if __name__ == "__main__":

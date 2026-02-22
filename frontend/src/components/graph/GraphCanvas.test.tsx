@@ -1,0 +1,93 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import "@/i18n";
+
+import type { GraphData } from "@/api/client";
+
+let capturedProps: Record<string, unknown> = {};
+
+vi.mock("react-force-graph-2d", () => ({
+  __esModule: true,
+  default: vi.fn((props: Record<string, unknown>) => {
+    capturedProps = props;
+    return <div data-testid="force-graph" />;
+  }),
+}));
+
+import { GraphCanvas } from "./GraphCanvas";
+
+const sampleData: GraphData = {
+  nodes: [
+    { id: "n1", label: "Node 1", type: "person", properties: {} },
+    { id: "n2", label: "Node 2", type: "company", properties: {} },
+    { id: "n3", label: "Node 3", type: "sanction", properties: {} },
+  ],
+  edges: [
+    { source: "n1", target: "n2", type: "PARTNER", properties: {} },
+    { source: "n2", target: "n3", type: "SANCTIONED", properties: {} },
+  ],
+};
+
+describe("GraphCanvas", () => {
+  it("renders ForceGraph2D component", () => {
+    render(
+      <GraphCanvas
+        data={sampleData}
+        centerId="n1"
+        enabledTypes={new Set(["person", "company", "sanction"])}
+        onNodeClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("force-graph")).toBeInTheDocument();
+  });
+
+  it("passes graphData with correct nodes and links", () => {
+    render(
+      <GraphCanvas
+        data={sampleData}
+        centerId="n1"
+        enabledTypes={new Set(["person", "company", "sanction"])}
+        onNodeClick={vi.fn()}
+      />,
+    );
+
+    const graphData = capturedProps.graphData as { nodes: unknown[]; links: unknown[] };
+    expect(graphData.nodes).toHaveLength(3);
+    expect(graphData.links).toHaveLength(2);
+  });
+
+  it("filters nodes by enabledTypes", () => {
+    render(
+      <GraphCanvas
+        data={sampleData}
+        centerId="n1"
+        enabledTypes={new Set(["person", "company"])}
+        onNodeClick={vi.fn()}
+      />,
+    );
+
+    const graphData = capturedProps.graphData as { nodes: { id: string }[]; links: unknown[] };
+    expect(graphData.nodes).toHaveLength(2);
+    expect(graphData.nodes.map((n) => n.id)).toEqual(["n1", "n2"]);
+    // Edge n2->n3 removed because n3 is filtered out
+    expect(graphData.links).toHaveLength(1);
+  });
+
+  it("invokes onNodeClick when node is clicked", () => {
+    const onNodeClick = vi.fn();
+    render(
+      <GraphCanvas
+        data={sampleData}
+        centerId="n1"
+        enabledTypes={new Set(["person", "company", "sanction"])}
+        onNodeClick={onNodeClick}
+      />,
+    );
+
+    const handler = capturedProps.onNodeClick as (node: { id: string }) => void;
+    handler({ id: "n2" });
+    expect(onNodeClick).toHaveBeenCalledWith("n2");
+  });
+});

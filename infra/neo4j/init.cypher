@@ -8,27 +8,30 @@ CREATE CONSTRAINT person_cpf_unique IF NOT EXISTS
 CREATE CONSTRAINT company_cnpj_unique IF NOT EXISTS
   FOR (c:Company) REQUIRE c.cnpj IS UNIQUE;
 
-CREATE CONSTRAINT contract_id_unique IF NOT EXISTS
-  FOR (c:Contract) REQUIRE c.id IS UNIQUE;
+CREATE CONSTRAINT contract_contract_id_unique IF NOT EXISTS
+  FOR (c:Contract) REQUIRE c.contract_id IS UNIQUE;
 
-CREATE CONSTRAINT sanction_id_unique IF NOT EXISTS
-  FOR (s:Sanction) REQUIRE s.id IS UNIQUE;
+CREATE CONSTRAINT sanction_sanction_id_unique IF NOT EXISTS
+  FOR (s:Sanction) REQUIRE s.sanction_id IS UNIQUE;
 
-CREATE CONSTRAINT finance_id_unique IF NOT EXISTS
-  FOR (f:Finance) REQUIRE f.id IS UNIQUE;
-
-CREATE CONSTRAINT election_id_unique IF NOT EXISTS
-  FOR (e:Election) REQUIRE e.id IS UNIQUE;
-
-CREATE CONSTRAINT public_office_id_unique IF NOT EXISTS
-  FOR (po:PublicOffice) REQUIRE po.id IS UNIQUE;
+CREATE CONSTRAINT public_office_cpf_unique IF NOT EXISTS
+  FOR (po:PublicOffice) REQUIRE po.cpf IS UNIQUE;
 
 CREATE CONSTRAINT investigation_id_unique IF NOT EXISTS
   FOR (i:Investigation) REQUIRE i.id IS UNIQUE;
 
+CREATE CONSTRAINT amendment_id_unique IF NOT EXISTS
+  FOR (a:Amendment) REQUIRE a.amendment_id IS UNIQUE;
+
 // ── Indexes ─────────────────────────────────────────────
 CREATE INDEX person_name IF NOT EXISTS
   FOR (p:Person) ON (p.name);
+
+CREATE INDEX person_author_key IF NOT EXISTS
+  FOR (p:Person) ON (p.author_key);
+
+CREATE INDEX person_sq_candidato IF NOT EXISTS
+  FOR (p:Person) ON (p.sq_candidato);
 
 CREATE INDEX company_razao_social IF NOT EXISTS
   FOR (c:Company) ON (c.razao_social);
@@ -36,11 +39,20 @@ CREATE INDEX company_razao_social IF NOT EXISTS
 CREATE INDEX contract_value IF NOT EXISTS
   FOR (c:Contract) ON (c.value);
 
+CREATE INDEX contract_object IF NOT EXISTS
+  FOR (c:Contract) ON (c.object);
+
 CREATE INDEX sanction_type IF NOT EXISTS
   FOR (s:Sanction) ON (s.type);
 
 CREATE INDEX election_year IF NOT EXISTS
   FOR (e:Election) ON (e.year);
+
+CREATE INDEX election_composite IF NOT EXISTS
+  FOR (e:Election) ON (e.year, e.cargo, e.uf, e.municipio);
+
+CREATE INDEX amendment_object IF NOT EXISTS
+  FOR (a:Amendment) ON (a.object);
 
 // ── Fulltext Search Index ───────────────────────────────
 CREATE FULLTEXT INDEX entity_search IF NOT EXISTS

@@ -19,6 +19,9 @@ from icarus_etl.transforms import (
     strip_document,
 )
 
+# Classified contracts (Polícia Federal etc.) use this sentinel CNPJ.
+_SIGILOSO_CNPJ = "-11"
+
 
 def _parse_brl(value: str | None) -> float:
     """Parse Brazilian monetary string to float.
@@ -86,10 +89,16 @@ class TransparenciaPipeline(Pipeline):
     def transform(self) -> None:
         contracts: list[dict[str, Any]] = []
         for _, row in self._raw_contratos.iterrows():
-            cnpj = format_cnpj(str(row["cnpj_contratada"]))
+            raw_cnpj = str(row["cnpj_contratada"]).strip()
+
+            # Skip classified contracts (sigiloso) — no usable CNPJ
+            if raw_cnpj == _SIGILOSO_CNPJ:
+                continue
+
+            cnpj = format_cnpj(raw_cnpj)
             contracts.append({
                 "contract_id": (
-                    f"{strip_document(str(row['cnpj_contratada']))}_{row['data_inicio']}"
+                    f"{strip_document(raw_cnpj)}_{row['data_inicio']}"
                 ),
                 "object": normalize_name(str(row["objeto"])),
                 "value": _parse_brl(str(row["valor"])),
@@ -112,13 +121,18 @@ class TransparenciaPipeline(Pipeline):
 
         amendments: list[dict[str, Any]] = []
         for _, row in self._raw_emendas.iterrows():
+            codigo = str(row.get("codigo_autor", "")).strip()
+            nome = normalize_name(str(row["nome_autor"]))
+            author_key = codigo if codigo else nome.replace(" ", "_")
+
             amendments.append({
-                "cpf": format_cpf(str(row["cpf_autor"])),
-                "name": normalize_name(str(row["nome_autor"])),
+                "amendment_id": f"{author_key}_{normalize_name(str(row['objeto']))}",
+                "author_key": author_key,
+                "name": nome,
                 "object": normalize_name(str(row["objeto"])),
                 "value": _parse_brl(str(row["valor"])),
             })
-        self.amendments = deduplicate_rows(amendments, ["cpf", "object"])
+        self.amendments = deduplicate_rows(amendments, ["amendment_id"])
 
     def load(self) -> None:
         loader = Neo4jBatchLoader(self.driver)
@@ -182,22 +196,37 @@ class TransparenciaPipeline(Pipeline):
             )
 
         if self.amendments:
-            # Ensure Person nodes exist for amendment authors
-            persons = deduplicate_rows(
-                [{"name": a["name"], "cpf": a["cpf"]} for a in self.amendments],
-                ["cpf"],
+            # Amendment nodes — each emenda is its own entity
+            loader.load_nodes(
+                "Amendment",
+                [
+                    {
+                        "amendment_id": a["amendment_id"],
+                        "object": a["object"],
+                        "value": a["value"],
+                    }
+                    for a in self.amendments
+                ],
+                key_field="amendment_id",
             )
-            loader.load_nodes("Person", persons, key_field="cpf")
 
-            # AUTOR_EMENDA: Person -> Contract (match by object)
+            # Person nodes for amendment authors (keyed by author_key).
+            # Entity resolution links these to TSE candidates later.
+            persons = deduplicate_rows(
+                [{"name": a["name"], "author_key": a["author_key"]} for a in self.amendments],
+                ["author_key"],
+            )
+            loader.load_nodes("Person", persons, key_field="author_key")
+
+            # AUTOR_EMENDA: Person -> Amendment
             loader.load_relationships(
                 rel_type="AUTOR_EMENDA",
                 rows=[
-                    {"source_key": a["cpf"], "target_key": a["object"]}
+                    {"source_key": a["author_key"], "target_key": a["amendment_id"]}
                     for a in self.amendments
                 ],
                 source_label="Person",
-                source_key="cpf",
-                target_label="Contract",
-                target_key="object",
+                source_key="author_key",
+                target_label="Amendment",
+                target_key="amendment_id",
             )

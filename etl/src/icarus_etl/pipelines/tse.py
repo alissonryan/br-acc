@@ -17,6 +17,11 @@ from icarus_etl.transforms import (
     strip_document,
 )
 
+# TSE 2024 masks ALL candidate CPFs as "-4". After strip_document → "4",
+# format_cpf → "4" — every candidate MERGEs into one ghost node.
+# We use SQ_CANDIDATO (unique sequential ID per candidate per election) instead.
+_MASKED_CPF_SENTINEL = "-4"
+
 
 class TSEPipeline(Pipeline):
     """Electoral data pipeline — candidates and campaign donations."""
@@ -39,10 +44,12 @@ class TSEPipeline(Pipeline):
     def extract(self) -> None:
         tse_dir = Path(self.data_dir) / "tse"
         self._raw_candidatos = pd.read_csv(
-            tse_dir / "candidatos.csv", encoding="latin-1", dtype=str
+            tse_dir / "candidatos.csv", encoding="latin-1", dtype=str,
+            nrows=self.limit,
         )
         self._raw_doacoes = pd.read_csv(
-            tse_dir / "doacoes.csv", encoding="latin-1", dtype=str
+            tse_dir / "doacoes.csv", encoding="latin-1", dtype=str,
+            nrows=self.limit,
         )
 
     def transform(self) -> None:
@@ -54,35 +61,50 @@ class TSEPipeline(Pipeline):
         elections: list[dict[str, Any]] = []
 
         for _, row in self._raw_candidatos.iterrows():
-            cpf = format_cpf(strip_document(str(row["cpf"])))
+            sq = str(row["sq_candidato"]).strip()
+            raw_cpf = str(row["cpf"]).strip()
             name = normalize_name(str(row["nome"]))
             ano = int(row["ano"])
             cargo = normalize_name(str(row["cargo"]))
             uf = str(row["uf"]).strip().upper()
             municipio = normalize_name(str(row.get("municipio", "")))
+            partido = str(row.get("partido", "")).strip().upper()
 
-            candidates.append({"cpf": cpf, "name": name})
+            # Only store CPF if it's a real value (not the TSE "-4" mask)
+            cpf = None
+            if raw_cpf != _MASKED_CPF_SENTINEL:
+                cpf = format_cpf(strip_document(raw_cpf))
+
+            candidate: dict[str, Any] = {
+                "sq_candidato": sq,
+                "name": name,
+                "partido": partido,
+            }
+            if cpf:
+                candidate["cpf"] = cpf
+
+            candidates.append(candidate)
             elections.append({
                 "year": ano,
                 "cargo": cargo,
                 "uf": uf,
                 "municipio": municipio,
-                "candidate_cpf": cpf,
+                "candidate_sq": sq,
             })
 
-        self.candidates = deduplicate_rows(candidates, ["cpf"])
+        self.candidates = deduplicate_rows(candidates, ["sq_candidato"])
         self.elections = deduplicate_rows(
-            elections, ["year", "cargo", "uf", "municipio", "candidate_cpf"]
+            elections, ["year", "cargo", "uf", "municipio", "candidate_sq"]
         )
 
     def _transform_donations(self) -> None:
         donations: list[dict[str, Any]] = []
 
         for _, row in self._raw_doacoes.iterrows():
-            candidate_cpf = format_cpf(strip_document(str(row["cpf_candidato"])))
+            candidate_sq = str(row["sq_candidato"]).strip()
             donor_doc = strip_document(str(row["cpf_cnpj_doador"]))
             donor_name = normalize_name(str(row["nome_doador"]))
-            valor = float(row["valor"])
+            valor = float(str(row["valor"]).replace(",", "."))
             ano = int(row["ano"])
 
             is_company = len(donor_doc) == 14
@@ -91,7 +113,7 @@ class TSEPipeline(Pipeline):
                 donor_doc_fmt = format_cpf(donor_doc)
 
             donations.append({
-                "candidate_cpf": candidate_cpf,
+                "candidate_sq": candidate_sq,
                 "donor_doc": donor_doc_fmt,
                 "donor_name": donor_name,
                 "donor_is_company": is_company,
@@ -104,8 +126,8 @@ class TSEPipeline(Pipeline):
     def load(self) -> None:
         loader = Neo4jBatchLoader(self.driver)
 
-        # Person nodes for candidates
-        loader.load_nodes("Person", self.candidates, key_field="cpf")
+        # Person nodes for candidates (keyed by sq_candidato)
+        loader.load_nodes("Person", self.candidates, key_field="sq_candidato")
 
         # Election nodes
         election_nodes = deduplicate_rows(
@@ -123,10 +145,10 @@ class TSEPipeline(Pipeline):
                 election_nodes,
             )
 
-        # CANDIDATO_EM relationships
+        # CANDIDATO_EM relationships (via sq_candidato)
         candidato_rels = [
             {
-                "source_key": e["candidate_cpf"],
+                "source_key": e["candidate_sq"],
                 "target_year": e["year"],
                 "target_cargo": e["cargo"],
                 "target_uf": e["uf"],
@@ -137,7 +159,7 @@ class TSEPipeline(Pipeline):
         if candidato_rels:
             loader.run_query(
                 "UNWIND $rows AS row "
-                "MATCH (p:Person {cpf: row.source_key}) "
+                "MATCH (p:Person {sq_candidato: row.source_key}) "
                 "MATCH (e:Election {year: row.target_year, cargo: row.target_cargo, "
                 "uf: row.target_uf, municipio: row.target_municipio}) "
                 "MERGE (p)-[:CANDIDATO_EM]->(e)",
@@ -163,11 +185,11 @@ class TSEPipeline(Pipeline):
                 "Company", deduplicate_rows(company_donors, ["cnpj"]), key_field="cnpj"
             )
 
-        # DOOU from Person donors
+        # DOOU from Person donors → candidate (via sq_candidato)
         person_donation_rels = [
             {
                 "source_key": d["donor_doc"],
-                "target_key": d["candidate_cpf"],
+                "target_key": d["candidate_sq"],
                 "valor": d["valor"],
                 "year": d["year"],
             }
@@ -178,17 +200,17 @@ class TSEPipeline(Pipeline):
             loader.run_query(
                 "UNWIND $rows AS row "
                 "MATCH (d:Person {cpf: row.source_key}) "
-                "MATCH (c:Person {cpf: row.target_key}) "
+                "MATCH (c:Person {sq_candidato: row.target_key}) "
                 "MERGE (d)-[r:DOOU]->(c) "
                 "SET r.valor = row.valor, r.year = row.year",
                 person_donation_rels,
             )
 
-        # DOOU from Company donors
+        # DOOU from Company donors → candidate (via sq_candidato)
         company_donation_rels = [
             {
                 "source_key": d["donor_doc"],
-                "target_key": d["candidate_cpf"],
+                "target_key": d["candidate_sq"],
                 "valor": d["valor"],
                 "year": d["year"],
             }
@@ -199,7 +221,7 @@ class TSEPipeline(Pipeline):
             loader.run_query(
                 "UNWIND $rows AS row "
                 "MATCH (d:Company {cnpj: row.source_key}) "
-                "MATCH (c:Person {cpf: row.target_key}) "
+                "MATCH (c:Person {sq_candidato: row.target_key}) "
                 "MERGE (d)-[r:DOOU]->(c) "
                 "SET r.valor = row.valor, r.year = row.year",
                 company_donation_rels,

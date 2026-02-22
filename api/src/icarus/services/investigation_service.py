@@ -216,6 +216,54 @@ async def list_tags(
     return [_record_to_tag(r) for r in records]
 
 
+async def delete_annotation(
+    session: AsyncSession,
+    investigation_id: str,
+    annotation_id: str,
+    user_id: str,
+) -> bool:
+    record = await execute_query_single(
+        session,
+        "annotation_delete",
+        {"investigation_id": investigation_id, "annotation_id": annotation_id, "user_id": user_id},
+    )
+    if record is None:
+        return False
+    return int(record["deleted"]) > 0
+
+
+async def delete_tag(
+    session: AsyncSession,
+    investigation_id: str,
+    tag_id: str,
+    user_id: str,
+) -> bool:
+    record = await execute_query_single(
+        session,
+        "tag_delete",
+        {"investigation_id": investigation_id, "tag_id": tag_id, "user_id": user_id},
+    )
+    if record is None:
+        return False
+    return int(record["deleted"]) > 0
+
+
+async def remove_entity_from_investigation(
+    session: AsyncSession,
+    investigation_id: str,
+    entity_id: str,
+    user_id: str,
+) -> bool:
+    record = await execute_query_single(
+        session,
+        "investigation_remove_entity",
+        {"investigation_id": investigation_id, "entity_id": entity_id, "user_id": user_id},
+    )
+    if record is None:
+        return False
+    return int(record["deleted"]) > 0
+
+
 async def generate_share_token(
     session: AsyncSession,
     investigation_id: str,

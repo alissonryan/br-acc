@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import ForceGraph2D, {
   type ForceGraphMethods,
   type LinkObject,
@@ -8,6 +8,7 @@ import ForceGraph2D, {
 import type { GraphData } from "@/api/client";
 import { type EntityType, entityColors } from "@/styles/tokens";
 
+import { EdgeDetail } from "./EdgeDetail";
 import styles from "./GraphCanvas.module.css";
 
 interface GraphCanvasProps {
@@ -27,10 +28,13 @@ interface GraphNodeObject extends NodeObject {
 interface GraphLinkObject extends LinkObject {
   type: string;
   confidence?: number;
+  value?: number;
+  properties: Record<string, unknown>;
 }
 
 export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: GraphCanvasProps) {
   const fgRef = useRef<ForceGraphMethods<GraphNodeObject, GraphLinkObject> | undefined>(undefined);
+  const [selectedEdge, setSelectedEdge] = useState<GraphLinkObject | null>(null);
 
   const filteredNodes = data.nodes.filter((n) => enabledTypes.has(n.type));
   const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
@@ -54,6 +58,8 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
       target: e.target,
       type: e.type,
       confidence: (e.properties as Record<string, unknown>)?.confidence as number | undefined,
+      value: (e.properties as Record<string, unknown>)?.value as number | undefined,
+      properties: e.properties,
     })),
   };
 
@@ -76,8 +82,13 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
   }, []);
 
   const linkWidth = useCallback((link: GraphLinkObject) => {
+    const value = link.value ?? 0;
     const confidence = link.confidence ?? 1;
-    return confidence >= 0.9 ? 1.5 : 0.5;
+    const baseWidth = confidence >= 0.9 ? 1.5 : 0.5;
+    if (value > 0) {
+      return baseWidth + Math.min(4, Math.log10(value + 1) * 0.5);
+    }
+    return baseWidth;
   }, []);
 
   const linkLineDash = useCallback((link: GraphLinkObject) => {
@@ -92,6 +103,14 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
     [onNodeClick],
   );
 
+  const handleLinkClick = useCallback((link: GraphLinkObject) => {
+    setSelectedEdge(link);
+  }, []);
+
+  const handleCloseEdgeDetail = useCallback(() => {
+    setSelectedEdge(null);
+  }, []);
+
   return (
     <div className={styles.canvas}>
       <ForceGraph2D
@@ -104,6 +123,7 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
         linkWidth={linkWidth}
         linkLineDash={linkLineDash}
         onNodeClick={handleNodeClick}
+        onLinkClick={handleLinkClick}
         backgroundColor="#0d100e"
         linkDirectionalParticles={0}
         cooldownTicks={100}
@@ -119,6 +139,9 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
           ctx.fillText(label, node.x, node.y + 5);
         }}
       />
+      {selectedEdge && (
+        <EdgeDetail edge={selectedEdge} onClose={handleCloseEdgeDetail} />
+      )}
     </div>
   );
 }

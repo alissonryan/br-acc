@@ -130,6 +130,9 @@
 }
 
 .entityChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -137,6 +140,21 @@
   font-size: var(--font-size-xs);
   color: var(--text-primary);
   font-family: var(--font-mono);
+}
+
+.removeButton {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.removeButton:hover {
+  color: var(--color-sanction);
 }
 
 .toast {

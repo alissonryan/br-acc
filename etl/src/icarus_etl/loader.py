@@ -1,6 +1,9 @@
+import logging
 from typing import Any
 
 from neo4j import Driver
+
+logger = logging.getLogger(__name__)
 
 
 class Neo4jBatchLoader:
@@ -9,6 +12,7 @@ class Neo4jBatchLoader:
     def __init__(self, driver: Driver, batch_size: int = 10_000) -> None:
         self.driver = driver
         self.batch_size = batch_size
+        self._total_written = 0
 
     def _run_batches(self, query: str, rows: list[dict[str, Any]]) -> int:
         total = 0
@@ -17,6 +21,9 @@ class Neo4jBatchLoader:
             with self.driver.session() as session:
                 session.run(query, {"rows": batch})
             total += len(batch)
+            self._total_written += len(batch)
+        if total >= 10_000:
+            logger.info("  Batch written: %d rows (cumulative: %d)", total, self._total_written)
         return total
 
     def load_nodes(

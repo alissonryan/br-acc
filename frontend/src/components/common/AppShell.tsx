@@ -58,6 +58,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             {t("nav.patterns")}
           </Link>
           <Link
+            to="/baseline"
+            className={navLinkClass("/baseline")}
+            onClick={() => setMenuOpen(false)}
+          >
+            {t("nav.baseline")}
+          </Link>
+          <Link
             to="/investigations"
             className={navLinkClass("/investigations")}
             onClick={() => setMenuOpen(false)}

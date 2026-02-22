@@ -14,6 +14,7 @@ export function InvestigationDetail() {
     updateInvestigation,
     deleteInvestigation,
     addEntity,
+    removeEntity,
     setActiveInvestigation,
   } = useInvestigationStore();
 
@@ -58,6 +59,14 @@ export function InvestigationDetail() {
     await addEntity(investigation.id, entityInput.trim());
     setEntityInput("");
   }, [investigation, entityInput, addEntity]);
+
+  const handleRemoveEntity = useCallback(
+    async (entityId: string) => {
+      if (!investigation) return;
+      await removeEntity(investigation.id, entityId);
+    },
+    [investigation, removeEntity],
+  );
 
   const handleShare = useCallback(async () => {
     if (!investigation) return;
@@ -157,7 +166,17 @@ export function InvestigationDetail() {
         </div>
         <div className={styles.entityList}>
           {investigation.entity_ids.map((eid) => (
-            <span key={eid} className={styles.entityChip}>{eid}</span>
+            <span key={eid} className={styles.entityChip}>
+              {eid}
+              <button
+                className={styles.removeButton}
+                onClick={() => handleRemoveEntity(eid)}
+                type="button"
+                aria-label={t("investigation.removeEntity")}
+              >
+                x
+              </button>
+            </span>
           ))}
         </div>
       </div>

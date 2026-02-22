@@ -56,6 +56,33 @@ def test_transform_produces_correct_contracts() -> None:
     assert contract["date"] == "2024-01-15"
 
 
+def test_transform_filters_sigiloso_contracts() -> None:
+    """Contracts with CNPJ=-11 (classified) should be filtered out."""
+    import pandas as pd
+
+    pipeline = _make_pipeline()
+    _extract_from_fixtures(pipeline)
+
+    # Add a sigiloso row to the raw data
+    sigiloso = pd.DataFrame([{
+        "cnpj_contratada": "-11",
+        "razao_social": "Sigiloso",
+        "objeto": "Classificado",
+        "valor": "100.000,00",
+        "orgao_contratante": "Policia Federal",
+        "data_inicio": "2024-01-01",
+    }])
+    pipeline._raw_contratos = pd.concat(
+        [pipeline._raw_contratos, sigiloso], ignore_index=True,
+    )
+
+    pipeline.transform()
+    cnpjs = [c["cnpj"] for c in pipeline.contracts]
+    assert all(c != "-11" for c in cnpjs)
+    # Original 3 contracts still present
+    assert len(pipeline.contracts) == 3
+
+
 def test_transform_parses_monetary_values() -> None:
     pipeline = _make_pipeline()
     _extract_from_fixtures(pipeline)
@@ -86,6 +113,29 @@ def test_transform_normalizes_server_names() -> None:
     assert len(pipeline.offices) == 2
     assert pipeline.offices[0]["name"] == "MARIA DA SILVA SANTOS"
     assert pipeline.offices[0]["cpf"] == "123.456.789-01"
+
+
+def test_transform_creates_amendment_nodes() -> None:
+    """Emendas should produce Amendment nodes, not link to Contract."""
+    pipeline = _make_pipeline()
+    _extract_from_fixtures(pipeline)
+    pipeline.transform()
+
+    assert len(pipeline.amendments) == 2
+    amendment = pipeline.amendments[0]
+    assert "amendment_id" in amendment
+    assert "author_key" in amendment
+    assert "object" in amendment
+    assert "value" in amendment
+
+
+def test_transform_amendment_ids_are_unique() -> None:
+    pipeline = _make_pipeline()
+    _extract_from_fixtures(pipeline)
+    pipeline.transform()
+
+    ids = [a["amendment_id"] for a in pipeline.amendments]
+    assert len(set(ids)) == len(ids)
 
 
 def test_parse_brl_handles_formats() -> None:

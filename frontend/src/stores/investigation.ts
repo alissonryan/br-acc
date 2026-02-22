@@ -19,10 +19,13 @@ interface InvestigationState {
   deleteInvestigation: (id: string) => Promise<void>;
   updateInvestigation: (id: string, data: { title?: string; description?: string }) => Promise<void>;
   addEntity: (investigationId: string, entityId: string) => Promise<void>;
+  removeEntity: (investigationId: string, entityId: string) => Promise<void>;
   fetchAnnotations: (investigationId: string) => Promise<void>;
   addAnnotation: (investigationId: string, entityId: string, text: string) => Promise<void>;
+  deleteAnnotation: (investigationId: string, annotationId: string) => Promise<void>;
   fetchTags: (investigationId: string) => Promise<void>;
   addTag: (investigationId: string, name: string, color?: string) => Promise<void>;
+  deleteTag: (investigationId: string, tagId: string) => Promise<void>;
 }
 
 export const useInvestigationStore = create<InvestigationState>((set, get) => ({
@@ -70,7 +73,16 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
 
   addEntity: async (investigationId, entityId) => {
     await api.addEntityToInvestigation(investigationId, entityId);
-    // Re-fetch investigation to get updated entity_ids
+    const updated = await api.getInvestigation(investigationId);
+    set((s) => ({
+      investigations: s.investigations.map((i) =>
+        i.id === investigationId ? updated : i,
+      ),
+    }));
+  },
+
+  removeEntity: async (investigationId, entityId) => {
+    await api.removeEntityFromInvestigation(investigationId, entityId);
     const updated = await api.getInvestigation(investigationId);
     set((s) => ({
       investigations: s.investigations.map((i) =>
@@ -93,6 +105,11 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
     set((s) => ({ annotations: [...s.annotations, annotation] }));
   },
 
+  deleteAnnotation: async (investigationId, annotationId) => {
+    await api.deleteAnnotation(investigationId, annotationId);
+    set((s) => ({ annotations: s.annotations.filter((a) => a.id !== annotationId) }));
+  },
+
   fetchTags: async (investigationId) => {
     try {
       const tags = await api.listTags(investigationId);
@@ -105,5 +122,10 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
   addTag: async (investigationId, name, color) => {
     const tag = await api.createTag(investigationId, name, color);
     set((s) => ({ tags: [...s.tags, tag] }));
+  },
+
+  deleteTag: async (investigationId, tagId) => {
+    await api.deleteTag(investigationId, tagId);
+    set((s) => ({ tags: s.tags.filter((t) => t.id !== tagId) }));
   },
 }));

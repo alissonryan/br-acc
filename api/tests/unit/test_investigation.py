@@ -14,12 +14,15 @@ INVESTIGATION_CYPHER_FILES = [
     "investigation_update",
     "investigation_delete",
     "investigation_add_entity",
+    "investigation_remove_entity",
     "investigation_share",
     "investigation_by_token",
     "annotation_create",
     "annotation_list",
+    "annotation_delete",
     "tag_create",
     "tag_list",
+    "tag_delete",
     "tag_add_to_entity",
 ]
 
@@ -307,7 +310,9 @@ async def test_share_investigation(
 
 
 @pytest.mark.anyio
-async def test_export_investigation(client: AsyncClient) -> None:
+async def test_export_investigation(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     inv_record = _mock_record({
         "id": "inv-uuid",
         "title": "Test",
@@ -320,6 +325,7 @@ async def test_export_investigation(client: AsyncClient) -> None:
 
     from icarus.main import app
 
+    user_rec = _user_record()
     call_count = 0
 
     driver = app.state.neo4j_driver
@@ -329,6 +335,8 @@ async def test_export_investigation(client: AsyncClient) -> None:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
+            return _fake_result([user_rec])
+        if call_count == 2:
             # investigation_get
             return _fake_result([inv_record])
         # annotation_list / tag_list return empty
@@ -345,12 +353,20 @@ async def test_export_investigation(client: AsyncClient) -> None:
     mock_session.run = AsyncMock(side_effect=_run_side_effect)
     driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
-    response = await client.get("/api/v1/investigations/inv-uuid/export")
+    response = await client.get(
+        "/api/v1/investigations/inv-uuid/export", headers=auth_headers
+    )
     assert response.status_code == 200
     data = response.json()
     assert "investigation" in data
     assert "annotations" in data
     assert "tags" in data
+
+
+@pytest.mark.anyio
+async def test_export_investigation_no_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/investigations/inv-uuid/export")
+    assert response.status_code == 401
 
 
 @pytest.mark.anyio
@@ -446,3 +462,129 @@ async def test_export_pdf_not_found(
         "/api/v1/investigations/nonexistent/export/pdf", headers=auth_headers
     )
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_delete_annotation(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 1})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/annotations/ann-uuid",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_delete_annotation_not_found(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 0})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/annotations/nonexistent",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_delete_annotation_no_auth(client: AsyncClient) -> None:
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/annotations/ann-uuid"
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_delete_tag(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 1})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/tags/tag-uuid",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_delete_tag_not_found(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 0})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/tags/nonexistent",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_delete_tag_no_auth(client: AsyncClient) -> None:
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/tags/tag-uuid"
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_remove_entity(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 1})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/entities/entity-1",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_remove_entity_not_found(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    delete_record = _mock_record({"deleted": 0})
+
+    from icarus.main import app
+
+    _setup_session_with_user_and_data(app.state.neo4j_driver, delete_record)
+
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/entities/nonexistent",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_remove_entity_no_auth(client: AsyncClient) -> None:
+    response = await client.delete(
+        "/api/v1/investigations/inv-uuid/entities/entity-1"
+    )
+    assert response.status_code == 401

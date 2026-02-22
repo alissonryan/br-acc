@@ -75,6 +75,29 @@
   border-radius: var(--radius-md);
 }
 
+.annotationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.deleteButton {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.deleteButton:hover {
+  color: var(--color-sanction);
+}
+
 .annotationText {
   font-size: var(--font-size-sm);
   color: var(--text-primary);

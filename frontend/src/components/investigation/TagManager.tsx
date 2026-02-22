@@ -18,7 +18,7 @@ const PRESET_COLORS = [
 
 export function TagManager() {
   const { t } = useTranslation();
-  const { activeInvestigationId, tags, fetchTags, addTag } =
+  const { activeInvestigationId, tags, fetchTags, addTag, deleteTag } =
     useInvestigationStore();
 
   const [name, setName] = useState("");
@@ -35,6 +35,14 @@ export function TagManager() {
     await addTag(activeInvestigationId, name.trim(), color);
     setName("");
   }, [activeInvestigationId, name, color, addTag]);
+
+  const handleDelete = useCallback(
+    async (tagId: string) => {
+      if (!activeInvestigationId) return;
+      await deleteTag(activeInvestigationId, tagId);
+    },
+    [activeInvestigationId, deleteTag],
+  );
 
   if (!activeInvestigationId) return null;
 
@@ -75,6 +83,14 @@ export function TagManager() {
           <span key={tag.id} className={styles.tag}>
             <span className={styles.tagDot} style={{ backgroundColor: tag.color }} />
             {tag.name}
+            <button
+              className={styles.deleteButton}
+              onClick={() => handleDelete(tag.id)}
+              type="button"
+              aria-label={t("investigation.deleteTag")}
+            >
+              x
+            </button>
           </span>
         ))}
       </div>

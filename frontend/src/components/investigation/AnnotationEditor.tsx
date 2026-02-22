@@ -13,6 +13,7 @@ export function AnnotationEditor() {
     annotations,
     fetchAnnotations,
     addAnnotation,
+    deleteAnnotation,
   } = useInvestigationStore();
 
   const [text, setText] = useState("");
@@ -41,6 +42,14 @@ export function AnnotationEditor() {
     await addAnnotation(activeInvestigationId, entityId, text.trim());
     setText("");
   }, [activeInvestigationId, entityId, text, addAnnotation]);
+
+  const handleDelete = useCallback(
+    async (annotationId: string) => {
+      if (!activeInvestigationId) return;
+      await deleteAnnotation(activeInvestigationId, annotationId);
+    },
+    [activeInvestigationId, deleteAnnotation],
+  );
 
   if (!investigation) return null;
 
@@ -76,7 +85,17 @@ export function AnnotationEditor() {
         )}
         {annotations.map((a) => (
           <div key={a.id} className={styles.annotation}>
-            <p className={styles.annotationText}>{a.text}</p>
+            <div className={styles.annotationHeader}>
+              <p className={styles.annotationText}>{a.text}</p>
+              <button
+                className={styles.deleteButton}
+                onClick={() => handleDelete(a.id)}
+                type="button"
+                aria-label={t("investigation.deleteAnnotation")}
+              >
+                x
+              </button>
+            </div>
             <div className={styles.annotationMeta}>
               <span>{a.entity_id}</span>
               <span>{new Date(a.created_at).toLocaleString()}</span>
