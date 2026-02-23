@@ -5,7 +5,7 @@ ORDER BY i.created_at DESC
 SKIP $skip
 LIMIT $limit
 OPTIONAL MATCH (i)-[:INCLUDES]->(e)
-WITH total, i, collect(e.id) AS eids
+WITH total, i, collect(coalesce(e.cpf, e.cnpj, e.contract_id, e.sanction_id, e.amendment_id, elementId(e))) AS eids
 RETURN total,
        i.id AS id,
        i.title AS title,

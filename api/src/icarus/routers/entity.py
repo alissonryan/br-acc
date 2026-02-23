@@ -71,6 +71,22 @@ async def get_entity(
     )
 
 
+@router.get("/by-element-id/{element_id}", response_model=EntityResponse)
+async def get_entity_by_element_id(
+    element_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EntityResponse:
+    record = await execute_query_single(
+        session, "entity_by_element_id", {"element_id": element_id}
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    return _node_to_entity(
+        record["e"], record["entity_labels"], element_id
+    )
+
+
 @router.get("/{entity_id}/connections", response_model=EntityWithConnections)
 async def get_connections(
     entity_id: str,

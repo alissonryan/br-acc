@@ -2,8 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from neo4j import AsyncSession
+from starlette.requests import Request
 
 from icarus.dependencies import get_session
+from icarus.middleware.rate_limit import limiter
 from icarus.models.pattern import PATTERN_METADATA, PatternResponse
 from icarus.services.pattern_service import PATTERN_QUERIES, run_all_patterns, run_pattern
 
@@ -11,7 +13,9 @@ router = APIRouter(prefix="/api/v1/patterns", tags=["patterns"])
 
 
 @router.get("/{entity_id}", response_model=PatternResponse)
+@limiter.limit("30/minute")
 async def get_patterns_for_entity(
+    request: Request,
     entity_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
     lang: Annotated[str, Query()] = "pt",
@@ -25,7 +29,9 @@ async def get_patterns_for_entity(
 
 
 @router.get("/{entity_id}/{pattern_name}", response_model=PatternResponse)
+@limiter.limit("30/minute")
 async def get_specific_pattern(
+    request: Request,
     entity_id: str,
     pattern_name: str,
     session: Annotated[AsyncSession, Depends(get_session)],

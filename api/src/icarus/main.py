@@ -12,11 +12,14 @@ from icarus.dependencies import close_driver, init_driver
 from icarus.middleware.cpf_masking import CPFMaskingMiddleware
 from icarus.middleware.rate_limit import limiter
 from icarus.routers import auth, baseline, entity, graph, investigation, meta, patterns, search
+from icarus.services.neo4j_service import ensure_schema
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    app.state.neo4j_driver = await init_driver()
+    driver = await init_driver()
+    app.state.neo4j_driver = driver
+    await ensure_schema(driver)
     yield
     await close_driver()
 

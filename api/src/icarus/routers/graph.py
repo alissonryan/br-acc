@@ -68,10 +68,14 @@ async def get_graph(
         elif isinstance(source_val, list):
             sources = [SourceAttribution(database=s) for s in source_val]
 
+        doc_id = record.get("document_id")
+        document_id = str(doc_id) if doc_id and not str(doc_id).startswith("4:") else None
+
         nodes.append(GraphNode(
             id=node_id,
             label=_extract_label(node, labels),
             type=labels[0].lower() if labels else "unknown",
+            document_id=document_id,
             properties=props,
             sources=sources,
             is_pep=_is_pep(props),

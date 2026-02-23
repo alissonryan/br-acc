@@ -3,8 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from neo4j import AsyncSession
+from starlette.requests import Request
 
 from icarus.dependencies import CurrentUser, get_session
+from icarus.middleware.rate_limit import limiter
 from icarus.models.user import TokenResponse, UserCreate, UserResponse
 from icarus.services import auth_service
 
@@ -12,7 +14,9 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
+@limiter.limit("10/minute")
 async def register(
+    request: Request,
     body: UserCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserResponse:
@@ -27,7 +31,9 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenResponse:

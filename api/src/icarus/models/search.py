@@ -8,6 +8,7 @@ class SearchResult(BaseModel):
     type: str
     name: str
     score: float
+    document: str | None = None
     properties: dict[str, str | float | int | bool | None]
     sources: list[SourceAttribution]
 

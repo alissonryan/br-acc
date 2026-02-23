@@ -6,12 +6,14 @@ import "@/i18n";
 
 vi.mock("@/api/client", () => ({
   getEntity: vi.fn(),
+  getEntityByElementId: vi.fn(),
 }));
 
-import { getEntity } from "@/api/client";
+import { getEntity, getEntityByElementId } from "@/api/client";
 import { EntityDetail } from "./EntityDetail";
 
 const mockGetEntity = vi.mocked(getEntity);
+const mockGetEntityByElementId = vi.mocked(getEntityByElementId);
 
 const sampleEntity = {
   id: "e1",
@@ -19,13 +21,14 @@ const sampleEntity = {
   type: "person",
   document: "***.***.***-34",
   properties: { role: "Diretor", city: "São Paulo" },
-  sources: ["TSE", "CNPJ"],
+  sources: [{ database: "TSE" }, { database: "CNPJ" }],
 };
 
 describe("EntityDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetEntity.mockResolvedValue(sampleEntity);
+    mockGetEntityByElementId.mockResolvedValue(sampleEntity);
   });
 
   it("returns null when entityId is null", () => {

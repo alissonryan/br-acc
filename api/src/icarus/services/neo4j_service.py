@@ -1,7 +1,10 @@
+import logging
 from pathlib import Path
 from typing import Any
 
-from neo4j import AsyncSession, Record
+from neo4j import AsyncDriver, AsyncSession, Record
+
+logger = logging.getLogger(__name__)
 
 QUERIES_DIR = Path(__file__).parent.parent / "queries"
 
@@ -46,3 +49,17 @@ async def execute_query_single(
     cypher = CypherLoader.load(query_name)
     result = await session.run(cypher, parameters or {})
     return await result.single()
+
+
+async def ensure_schema(driver: AsyncDriver) -> None:
+    """Run schema_init.cypher statements on startup. All use IF NOT EXISTS so idempotent."""
+    raw = CypherLoader.load("schema_init")
+    statements = [s.strip() for s in raw.split(";") if s.strip() and not s.strip().startswith("//")]
+    async with driver.session() as session:
+        for stmt in statements:
+            # Skip comment-only lines
+            lines = [ln for ln in stmt.splitlines() if not ln.strip().startswith("//")]
+            cypher = "\n".join(lines).strip()
+            if cypher:
+                await session.run(cypher)
+    logger.info("Schema bootstrap complete: %d statements executed", len(statements))

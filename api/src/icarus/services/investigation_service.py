@@ -68,11 +68,12 @@ async def create_investigation(
 async def get_investigation(
     session: AsyncSession,
     investigation_id: str,
+    user_id: str,
 ) -> InvestigationResponse | None:
     record = await execute_query_single(
         session,
         "investigation_get",
-        {"id": investigation_id},
+        {"id": investigation_id, "user_id": user_id},
     )
     if record is None:
         return None
@@ -171,11 +172,12 @@ async def create_annotation(
 async def list_annotations(
     session: AsyncSession,
     investigation_id: str,
+    user_id: str,
 ) -> list[Annotation]:
     records = await execute_query(
         session,
         "annotation_list",
-        {"investigation_id": investigation_id},
+        {"investigation_id": investigation_id, "user_id": user_id},
     )
     return [_record_to_annotation(r) for r in records]
 
@@ -207,11 +209,12 @@ async def create_tag(
 async def list_tags(
     session: AsyncSession,
     investigation_id: str,
+    user_id: str,
 ) -> list[Tag]:
     records = await execute_query(
         session,
         "tag_list",
-        {"investigation_id": investigation_id},
+        {"investigation_id": investigation_id, "user_id": user_id},
     )
     return [_record_to_tag(r) for r in records]
 

@@ -19,13 +19,13 @@ import { GraphCanvas } from "./GraphCanvas";
 
 const sampleData: GraphData = {
   nodes: [
-    { id: "n1", label: "Node 1", type: "person", properties: {} },
-    { id: "n2", label: "Node 2", type: "company", properties: {} },
-    { id: "n3", label: "Node 3", type: "sanction", properties: {} },
+    { id: "n1", label: "Node 1", type: "person", properties: {}, sources: [] },
+    { id: "n2", label: "Node 2", type: "company", properties: {}, sources: [] },
+    { id: "n3", label: "Node 3", type: "sanction", properties: {}, sources: [] },
   ],
   edges: [
-    { source: "n1", target: "n2", type: "PARTNER", properties: {} },
-    { source: "n2", target: "n3", type: "SANCTIONED", properties: {} },
+    { source: "n1", target: "n2", type: "PARTNER", properties: {}, sources: [] },
+    { source: "n2", target: "n3", type: "SANCTIONED", properties: {}, sources: [] },
   ],
 };
 

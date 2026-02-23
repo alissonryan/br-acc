@@ -1,6 +1,6 @@
-MATCH (i:Investigation {id: $id})
+MATCH (u:User {id: $user_id})-[:OWNS]->(i:Investigation {id: $id})
 OPTIONAL MATCH (i)-[:INCLUDES]->(e)
-WITH i, collect(e.id) AS eids
+WITH i, collect(coalesce(e.cpf, e.cnpj, e.contract_id, e.sanction_id, e.amendment_id, elementId(e))) AS eids
 RETURN i.id AS id,
        i.title AS title,
        i.description AS description,

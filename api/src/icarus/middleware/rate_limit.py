@@ -2,6 +2,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
 
+from icarus.config import settings
 from icarus.services.auth_service import decode_access_token
 
 
@@ -16,4 +17,7 @@ def _get_rate_limit_key(request: Request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=_get_rate_limit_key)
+limiter = Limiter(
+    key_func=_get_rate_limit_key,
+    default_limits=[settings.rate_limit_anon],
+)

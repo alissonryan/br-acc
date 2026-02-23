@@ -53,8 +53,9 @@ async def list_investigations(
 async def get_investigation(
     investigation_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
 ) -> InvestigationResponse:
-    result = await svc.get_investigation(session, investigation_id)
+    result = await svc.get_investigation(session, investigation_id, user.id)
     if result is None:
         raise HTTPException(status_code=404, detail="Investigation not found")
     return result
@@ -133,8 +134,9 @@ async def create_annotation(
 async def list_annotations(
     investigation_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
 ) -> list[Annotation]:
-    return await svc.list_annotations(session, investigation_id)
+    return await svc.list_annotations(session, investigation_id, user.id)
 
 
 @router.post(
@@ -158,8 +160,9 @@ async def create_tag(
 async def list_tags(
     investigation_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
+    user: CurrentUser,
 ) -> list[Tag]:
-    return await svc.list_tags(session, investigation_id)
+    return await svc.list_tags(session, investigation_id, user.id)
 
 
 @router.delete(
@@ -241,12 +244,12 @@ async def export_investigation(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: CurrentUser,
 ) -> JSONResponse:
-    investigation = await svc.get_investigation(session, investigation_id)
+    investigation = await svc.get_investigation(session, investigation_id, user.id)
     if investigation is None:
         raise HTTPException(status_code=404, detail="Investigation not found")
 
-    annotations = await svc.list_annotations(session, investigation_id)
-    tags = await svc.list_tags(session, investigation_id)
+    annotations = await svc.list_annotations(session, investigation_id, user.id)
+    tags = await svc.list_tags(session, investigation_id, user.id)
 
     export_data = {
         "investigation": investigation.model_dump(),
@@ -263,12 +266,12 @@ async def export_investigation_pdf(
     user: CurrentUser,
     lang: Annotated[Literal["pt", "en"], Query()] = "pt",
 ) -> Response:
-    investigation = await svc.get_investigation(session, investigation_id)
+    investigation = await svc.get_investigation(session, investigation_id, user.id)
     if investigation is None:
         raise HTTPException(status_code=404, detail="Investigation not found")
 
-    annotations = await svc.list_annotations(session, investigation_id)
-    tags = await svc.list_tags(session, investigation_id)
+    annotations = await svc.list_annotations(session, investigation_id, user.id)
+    tags = await svc.list_tags(session, investigation_id, user.id)
 
     entities: list[dict[str, str]] = []
     for entity_id in investigation.entity_ids:

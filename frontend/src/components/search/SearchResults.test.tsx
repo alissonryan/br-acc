@@ -13,14 +13,14 @@ const sampleResults: SearchResult[] = [
     name: "João Silva",
     type: "person",
     document: "***.***.***-34",
-    sources: ["TSE", "CNPJ"],
+    sources: [{ database: "TSE" }, { database: "CNPJ" }],
     score: 1.0,
   },
   {
     id: "e2",
     name: "Acme Ltda",
     type: "company",
-    sources: ["CNPJ"],
+    sources: [{ database: "CNPJ" }],
     score: 0.9,
   },
 ];

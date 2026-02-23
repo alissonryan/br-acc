@@ -43,12 +43,18 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json() as Promise<T>;
 }
 
+export interface SourceAttribution {
+  database: string;
+  record_id?: string | null;
+  extracted_at?: string | null;
+}
+
 export interface SearchResult {
   id: string;
   name: string;
   type: string;
-  document?: string;
-  sources: string[];
+  document?: string | null;
+  sources: SourceAttribution[];
   score: number;
 }
 
@@ -65,14 +71,16 @@ export interface EntityDetail {
   type: string;
   document?: string;
   properties: Record<string, unknown>;
-  sources: string[];
+  sources: SourceAttribution[];
 }
 
 export interface GraphNode {
   id: string;
   label: string;
   type: string;
+  document_id?: string | null;
   properties: Record<string, unknown>;
+  sources: SourceAttribution[];
 }
 
 export interface GraphEdge {
@@ -80,6 +88,7 @@ export interface GraphEdge {
   target: string;
   type: string;
   properties: Record<string, unknown>;
+  sources: SourceAttribution[];
 }
 
 export interface GraphData {
@@ -102,6 +111,10 @@ export function searchEntities(
 
 export function getEntity(id: string): Promise<EntityDetail> {
   return apiFetch<EntityDetail>(`/api/v1/entity/${encodeURIComponent(id)}`);
+}
+
+export function getEntityByElementId(elementId: string): Promise<EntityDetail> {
+  return apiFetch<EntityDetail>(`/api/v1/entity/by-element-id/${encodeURIComponent(elementId)}`);
 }
 
 export interface PatternInfo {

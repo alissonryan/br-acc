@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type EntityDetail as EntityDetailData, getEntity } from "@/api/client";
+import { type EntityDetail as EntityDetailData, getEntity, getEntityByElementId } from "@/api/client";
 import { SourceBadge } from "@/components/common/SourceBadge";
 import { type EntityType, entityColors } from "@/styles/tokens";
 
@@ -23,7 +23,9 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
       return;
     }
     setLoading(true);
-    getEntity(entityId)
+    const isCpfOrCnpj = /^\d{11}$/.test(entityId) || /^\d{14}$/.test(entityId);
+    const fetcher = isCpfOrCnpj ? getEntity(entityId) : getEntityByElementId(entityId);
+    fetcher
       .then(setEntity)
       .catch(() => setEntity(null))
       .finally(() => setLoading(false));
@@ -69,7 +71,7 @@ export function EntityDetail({ entityId, onClose }: EntityDetailProps) {
             <div className={styles.sources}>
               <span className={styles.sourcesLabel}>{t("common.source")}:</span>
               {entity.sources.map((s) => (
-                <SourceBadge key={s} source={s} />
+                <SourceBadge key={s.database} source={s.database} />
               ))}
             </div>
           )}

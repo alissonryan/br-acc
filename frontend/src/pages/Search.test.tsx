@@ -37,7 +37,7 @@ describe("Search", () => {
     const user = userEvent.setup();
     mockSearchEntities.mockResolvedValueOnce({
       results: [
-        { id: "e1", name: "João Silva", type: "person", sources: ["TSE"], score: 1.0 },
+        { id: "e1", name: "João Silva", type: "person", sources: [{ database: "TSE" }], score: 1.0 },
       ],
       total: 1,
       page: 1,

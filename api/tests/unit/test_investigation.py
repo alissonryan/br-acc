@@ -190,25 +190,57 @@ async def test_list_investigations(
 
 
 @pytest.mark.anyio
-async def test_get_nonexistent_investigation(client: AsyncClient) -> None:
+async def test_get_investigation_no_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/investigations/some-id")
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_get_nonexistent_investigation(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     from icarus.main import app
 
+    user_rec = _user_record()
     driver = app.state.neo4j_driver
     mock_session = AsyncMock()
 
-    result = AsyncMock()
+    call_count = 0
 
-    async def _iter(self: object) -> object:  # noqa: ANN001
-        return
-        yield  # noqa: UP028
+    async def _run_side_effect(*args: object, **kwargs: object) -> AsyncMock:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return _fake_result([user_rec])
+        result = AsyncMock()
 
-    result.__aiter__ = _iter
-    result.single = AsyncMock(return_value=None)
-    mock_session.run = AsyncMock(return_value=result)
+        async def _iter(self: object) -> object:  # noqa: ANN001
+            return
+            yield  # noqa: UP028
+
+        result.__aiter__ = _iter
+        result.single = AsyncMock(return_value=None)
+        return result
+
+    mock_session.run = AsyncMock(side_effect=_run_side_effect)
     driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
-    response = await client.get("/api/v1/investigations/nonexistent-id")
+    response = await client.get(
+        "/api/v1/investigations/nonexistent-id", headers=auth_headers
+    )
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_list_annotations_no_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/investigations/inv-uuid/annotations")
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_list_tags_no_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/investigations/inv-uuid/tags")
+    assert response.status_code == 401
 
 
 @pytest.mark.anyio

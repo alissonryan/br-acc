@@ -1,4 +1,4 @@
-MATCH (i:Investigation {id: $investigation_id})-[:HAS_ANNOTATION]->(a:Annotation)
+MATCH (u:User {id: $user_id})-[:OWNS]->(i:Investigation {id: $investigation_id})-[:HAS_ANNOTATION]->(a:Annotation)
 RETURN a.id AS id,
        a.entity_id AS entity_id,
        $investigation_id AS investigation_id,

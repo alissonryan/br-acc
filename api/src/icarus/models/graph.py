@@ -7,6 +7,7 @@ class GraphNode(BaseModel):
     id: str
     label: str
     type: str
+    document_id: str | None = None
     properties: dict[str, str | float | int | bool | None]
     sources: list[SourceAttribution]
     is_pep: bool = False

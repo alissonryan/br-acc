@@ -3,7 +3,9 @@ YIELD node, score
 WITH node, score, labels(node) AS node_labels
 WHERE $entity_type IS NULL
    OR ANY(label IN node_labels WHERE toLower(label) = $entity_type)
-RETURN node, score, node_labels, elementId(node) AS node_id
+RETURN node, score, node_labels,
+       elementId(node) AS node_id,
+       coalesce(node.cpf, node.cnpj, node.contract_id, node.sanction_id, node.amendment_id, elementId(node)) AS document_id
 ORDER BY score DESC
 SKIP $skip
 LIMIT $limit

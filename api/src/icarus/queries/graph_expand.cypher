@@ -10,5 +10,6 @@ WHERE $entity_types IS NULL
    OR ANY(label IN node_labels WHERE toLower(label) IN $entity_types)
 RETURN DISTINCT
     node, node_labels, node_id,
+    coalesce(node.cpf, node.cnpj, node.contract_id, node.sanction_id, node.amendment_id, elementId(node)) AS document_id,
     elementId(center) AS center_id
 LIMIT 500
