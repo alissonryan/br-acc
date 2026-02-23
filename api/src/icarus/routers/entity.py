@@ -112,7 +112,7 @@ async def get_connections(
     types: Annotated[str | None, Query()] = None,
 ) -> EntityWithConnections:
     records = await execute_query(
-        session, "entity_connections", {"entity_id": entity_id}
+        session, "entity_connections", {"entity_id": entity_id, "depth": depth}
     )
 
     if not records:

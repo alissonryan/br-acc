@@ -24,8 +24,8 @@ const sampleData: GraphData = {
     { id: "n3", label: "Node 3", type: "sanction", properties: {}, sources: [] },
   ],
   edges: [
-    { source: "n1", target: "n2", type: "PARTNER", properties: {}, sources: [] },
-    { source: "n2", target: "n3", type: "SANCTIONED", properties: {}, sources: [] },
+    { id: "r1", source: "n1", target: "n2", type: "PARTNER", properties: {}, confidence: 1.0, sources: [] },
+    { id: "r2", source: "n2", target: "n3", type: "SANCTIONED", properties: {}, confidence: 0.8, sources: [] },
   ],
 };
 

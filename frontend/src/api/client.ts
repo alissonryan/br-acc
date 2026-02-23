@@ -83,10 +83,12 @@ export interface GraphNode {
 }
 
 export interface GraphEdge {
+  id: string;
   source: string;
   target: string;
   type: string;
   properties: Record<string, unknown>;
+  confidence: number;
   sources: SourceAttribution[];
 }
 
@@ -164,7 +166,7 @@ export function getGraphData(
 ): Promise<GraphData> {
   const params = new URLSearchParams({ depth: String(depth) });
   if (types?.length) {
-    params.set("types", types.join(","));
+    params.set("entity_types", types.join(","));
   }
   return apiFetch<GraphData>(`/api/v1/graph/${encodeURIComponent(entityId)}?${params}`);
 }

@@ -57,7 +57,7 @@ export function GraphCanvas({ data, centerId, enabledTypes, onNodeClick }: Graph
       source: e.source,
       target: e.target,
       type: e.type,
-      confidence: (e.properties as Record<string, unknown>)?.confidence as number | undefined,
+      confidence: e.confidence,
       value: (e.properties as Record<string, unknown>)?.value as number | undefined,
       properties: e.properties,
     })),
