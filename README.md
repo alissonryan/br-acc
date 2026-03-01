@@ -1,25 +1,35 @@
-# World Transparency Graph (WTG)
+# BRACC Open Graph
 
-[![WTG Header](docs/brand/wtg-header.png)](docs/brand/wtg-header.png)
+[![BRACC Header](docs/brand/bracc-header.jpg)](docs/brand/bracc-header.jpg)
 
-[![CI](https://github.com/brunoclz/br-acc/actions/workflows/ci.yml/badge.svg)](https://github.com/brunoclz/br-acc/actions/workflows/ci.yml)
+Language: **English** | [Português (Brasil)](README.pt-BR.md)
+
+[![CI](https://github.com/World-Open-Graph/br-acc/actions/workflows/ci.yml/badge.svg)](https://github.com/World-Open-Graph/br-acc/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-WTG is an open-source graph infrastructure for public data intelligence.
-Website: [bracc.org](https://bracc.org)
+BRACC Open Graph is an open-source graph infrastructure for public data intelligence.
+Primary website: [bracc.org](https://bracc.org)
 
-This repository contains the full code for the WTG public edition. The pattern engine is temporarily disabled pending validation.
+BRACC Open Graph is an initiative from [World Open Graph](https://worldopengraph.com).
+This repository contains the full code for the public BRACC edition.
 
-## What it does
+## What BRACC Represents
 
-- Ingests public records with reproducible ETL pipelines.
-- Loads normalized data into Neo4j.
-- Exposes a public-safe API surface.
-- Provides a React frontend for graph exploration.
+- Public-interest graph infrastructure for transparency work.
+- Reproducible ingestion and processing for public records.
+- Investigative signals with explicit methodological caution.
 
 Data patterns from public records are signals, not legal proof.
 
-## Stack
+## What Is In This Repository
+
+- Public API (`api/`)
+- ETL pipelines and downloaders (`etl/`, `scripts/`)
+- Frontend explorer (`frontend/`)
+- Infrastructure and schema bootstrap (`infra/`)
+- Documentation, legal pack, and release gates (`docs/`, root policies)
+
+## Architecture At A Glance
 
 - Graph DB: Neo4j 5 Community
 - Backend: FastAPI (Python 3.12+, async)
@@ -27,7 +37,7 @@ Data patterns from public records are signals, not legal proof.
 - ETL: Python (pandas, httpx)
 - Infra: Docker Compose
 
-## Quick start
+## Quick Start
 
 ```bash
 cp .env.example .env
@@ -43,7 +53,16 @@ make seed
 - Frontend: `http://localhost:3000`
 - Neo4j Browser: `http://localhost:7474`
 
-## Public-safe defaults
+## Repository Map
+
+- `api/`: FastAPI app, routers, Cypher query loading
+- `etl/`: pipeline definitions and ETL runtime
+- `frontend/`: React application for graph exploration
+- `infra/`: Neo4j initialization and compose-related infra
+- `scripts/`: operational and validation scripts
+- `docs/`: legal, release, and dataset documentation
+
+## Operating Modes / Public-Safe Defaults
 
 Use these defaults for public deployments:
 
@@ -69,7 +88,7 @@ make check
 make neutrality
 ```
 
-## API surface
+## API Surface
 
 | Method | Route | Description |
 |---|---|---|
@@ -77,6 +96,15 @@ make neutrality
 | GET | `/api/v1/public/meta` | Aggregated metrics and source health |
 | GET | `/api/v1/public/graph/company/{cnpj_or_id}` | Public company subgraph |
 | GET | `/api/v1/public/patterns/company/{cnpj_or_id}` | Returns `503` while pattern engine is disabled |
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for workflow, quality gates, and review expectations.
+
+## Contributors
+
+- [Bruno Cesar](https://github.com/brunoclz) — creator and maintainer
+- Codex — AI-assisted engineering contributor
 
 ## Legal & Ethics
 

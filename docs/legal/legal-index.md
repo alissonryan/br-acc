@@ -4,6 +4,8 @@ Policy-Version: v1.1.0
 Effective-Date: 2026-03-01  
 Owner: WTG Governance Team
 
+Language: **English** | [Português (Brasil)](./legal-index.pt-BR.md)
+
 ## Core policies
 
 - [ETHICS.md](../../ETHICS.md)
@@ -13,6 +15,13 @@ Owner: WTG Governance Team
 - [DISCLAIMER.md](../../DISCLAIMER.md)
 - [SECURITY.md](../../SECURITY.md)
 - [ABUSE_RESPONSE.md](../../ABUSE_RESPONSE.md)
+- [ETHICS.pt-BR.md](../../ETHICS.pt-BR.md)
+- [LGPD.pt-BR.md](../../LGPD.pt-BR.md)
+- [PRIVACY.pt-BR.md](../../PRIVACY.pt-BR.md)
+- [TERMS.pt-BR.md](../../TERMS.pt-BR.md)
+- [DISCLAIMER.pt-BR.md](../../DISCLAIMER.pt-BR.md)
+- [SECURITY.pt-BR.md](../../SECURITY.pt-BR.md)
+- [ABUSE_RESPONSE.pt-BR.md](../../ABUSE_RESPONSE.pt-BR.md)
 - [public-compliance-pack.md](./public-compliance-pack.md)
 
 ## Applicability by deployment model
